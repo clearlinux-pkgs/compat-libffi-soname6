@@ -4,7 +4,7 @@
 #
 Name     : compat-libffi-soname6
 Version  : 3.2.1
-Release  : 36
+Release  : 37
 URL      : https://github.com/libffi/libffi/archive/v3.2.1/libffi-3.2.1.tar.gz
 Source0  : https://github.com/libffi/libffi/archive/v3.2.1/libffi-3.2.1.tar.gz
 Summary  : Library supporting Foreign Function Interfaces
@@ -14,8 +14,14 @@ Requires: compat-libffi-soname6-lib = %{version}-%{release}
 Requires: compat-libffi-soname6-license = %{version}-%{release}
 BuildRequires : dejagnu
 BuildRequires : expect
+BuildRequires : gcc-dev32
+BuildRequires : gcc-libgcc32
+BuildRequires : gcc-libstdc++32
+BuildRequires : glibc-dev32
+BuildRequires : glibc-libc32
 BuildRequires : tcl
 BuildRequires : texinfo
+Patch1: 0001-Update-ax_cc_maxopt-m4-macro.patch
 
 %description
 Status
@@ -32,6 +38,15 @@ Requires: compat-libffi-soname6-license = %{version}-%{release}
 lib components for the compat-libffi-soname6 package.
 
 
+%package lib32
+Summary: lib32 components for the compat-libffi-soname6 package.
+Group: Default
+Requires: compat-libffi-soname6-license = %{version}-%{release}
+
+%description lib32
+lib32 components for the compat-libffi-soname6 package.
+
+
 %package license
 Summary: license components for the compat-libffi-soname6 package.
 Group: Default
@@ -43,13 +58,17 @@ license components for the compat-libffi-soname6 package.
 %prep
 %setup -q -n libffi-3.2.1
 cd %{_builddir}/libffi-3.2.1
+%patch1 -p1
+pushd ..
+cp -a libffi-3.2.1 build32
+popd
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C.UTF-8
-export SOURCE_DATE_EPOCH=1616687100
+export SOURCE_DATE_EPOCH=1616693105
 export GCC_IGNORE_WERROR=1
 export CFLAGS="$CFLAGS -O3 -falign-functions=32 -fno-lto -fno-math-errno -fno-semantic-interposition -fno-trapping-math "
 export FCFLAGS="$FFLAGS -O3 -falign-functions=32 -fno-lto -fno-math-errno -fno-semantic-interposition -fno-trapping-math "
@@ -58,20 +77,45 @@ export CXXFLAGS="$CXXFLAGS -O3 -falign-functions=32 -fno-lto -fno-math-errno -fn
 %autogen --disable-static
 make  %{?_smp_mflags}
 
+pushd ../build32/
+export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
+export ASFLAGS="${ASFLAGS}${ASFLAGS:+ }--32"
+export CFLAGS="${CFLAGS}${CFLAGS:+ }-m32 -mstackrealign"
+export CXXFLAGS="${CXXFLAGS}${CXXFLAGS:+ }-m32 -mstackrealign"
+export LDFLAGS="${LDFLAGS}${LDFLAGS:+ }-m32 -mstackrealign"
+%autogen --disable-static   --libdir=/usr/lib32 --build=i686-generic-linux-gnu --host=i686-generic-linux-gnu --target=i686-clr-linux-gnu
+make  %{?_smp_mflags}
+popd
 %check
 export LANG=C.UTF-8
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 make %{?_smp_mflags} check || :
+cd ../build32;
+make %{?_smp_mflags} check || : || :
 
 %install
-export SOURCE_DATE_EPOCH=1616687100
+export SOURCE_DATE_EPOCH=1616693105
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/compat-libffi-soname6
 cp %{_builddir}/libffi-3.2.1/LICENSE %{buildroot}/usr/share/package-licenses/compat-libffi-soname6/0155a7d592674828653b18e044fe6ea2685fac13
+pushd ../build32/
+%make_install32
+if [ -d  %{buildroot}/usr/lib32/pkgconfig ]
+then
+pushd %{buildroot}/usr/lib32/pkgconfig
+for i in *.pc ; do ln -s $i 32$i ; done
+popd
+fi
+popd
 %make_install
 ## Remove excluded files
+rm -f %{buildroot}/usr/lib32/libffi-3.2.1/include/ffi.h
+rm -f %{buildroot}/usr/lib32/libffi-3.2.1/include/ffitarget.h
+rm -f %{buildroot}/usr/lib32/libffi.so
+rm -f %{buildroot}/usr/lib32/pkgconfig/32libffi.pc
+rm -f %{buildroot}/usr/lib32/pkgconfig/libffi.pc
 rm -f %{buildroot}/usr/lib64/libffi-3.2.1/include/ffi.h
 rm -f %{buildroot}/usr/lib64/libffi-3.2.1/include/ffitarget.h
 rm -f %{buildroot}/usr/lib64/libffi.so
@@ -89,6 +133,11 @@ rm -f %{buildroot}/usr/share/man/man3/ffi_prep_cif_var.3
 %defattr(-,root,root,-)
 /usr/lib64/libffi.so.6
 /usr/lib64/libffi.so.6.0.4
+
+%files lib32
+%defattr(-,root,root,-)
+/usr/lib32/libffi.so.6
+/usr/lib32/libffi.so.6.0.4
 
 %files license
 %defattr(0644,root,root,0755)
