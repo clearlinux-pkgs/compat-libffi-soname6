@@ -4,7 +4,7 @@
 #
 Name     : compat-libffi-soname6
 Version  : 3.2.1
-Release  : 37
+Release  : 38
 URL      : https://github.com/libffi/libffi/archive/v3.2.1/libffi-3.2.1.tar.gz
 Source0  : https://github.com/libffi/libffi/archive/v3.2.1/libffi-3.2.1.tar.gz
 Summary  : Library supporting Foreign Function Interfaces
